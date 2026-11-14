@@ -7,10 +7,11 @@
      GitHub에 올라가도 괜찮아요. 일기를 지키는 건 firestore.rules(보안 규칙)와 구글 로그인이에요.
    ========================================================= */
 export const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: "",
+  apiKey: "AIzaSyCmGdIjgcvgG84CsZnpiKC8P_GqDKm4xSQ",
+  authDomain: "teacher-hub-697d7.firebaseapp.com",
+  projectId: "teacher-hub-697d7",
+  storageBucket: "teacher-hub-697d7.firebasestorage.app",
+  messagingSenderId: "215737217143",
+  appId: "1:215737217143:web:280fea1664c15e70679672",
+  measurementId: "G-3SN13G1WYE",
 };
