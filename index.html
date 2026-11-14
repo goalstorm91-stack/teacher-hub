@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>교사 업무효율화 허브</title>
+  <link rel="stylesheet" href="assets/style.css" />
+  <style>
+    .hero { padding: 36px 0 20px; }
+    .hero-row { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; align-items: stretch; }
+    @media (max-width: 800px) { .hero-row { grid-template-columns: 1fr; } }
+    .stat-num { font-size: 40px; font-weight: 800; letter-spacing: -.03em; line-height: 1; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 24px 0 16px; }
+    .chip { height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-weight: 600; cursor: pointer; }
+    .chip.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .search { max-width: 260px; margin-left: auto; border-radius: 999px; }
+    @media (max-width: 600px) { .search { max-width: none; margin-left: 0; } }
+    .app-card { display: flex; flex-direction: column; gap: 12px; text-decoration: none; transition: transform .15s ease, box-shadow .15s ease; min-height: 210px; }
+    a.app-card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(15,27,45,.12); }
+    .app-icon { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; font-size: 26px; }
+    .app-icon.green { background: var(--green-soft); }
+    .app-icon.blue { background: var(--blue-soft); }
+    .app-icon.navy { background: #e5e9f0; }
+    .app-card .foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; }
+    .app-card.planned { opacity: .65; border-style: dashed; cursor: default; }
+    .arrow { width: 34px; height: 34px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; }
+    footer { padding: 40px 0; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="container">
+      <a class="brand" href="index.html"><span class="brand-mark">✦</span> 교사 업무효율화 허브</a>
+      <div class="spacer"></div>
+      <span class="badge green" id="today"></span>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div class="hero-row">
+        <div class="card">
+          <div class="eyebrow">Teacher Toolkit</div>
+          <h1>선생님의 반복 업무를<br />조금 더 가볍게.</h1>
+          <p class="muted">바이브 코딩으로 만든 업무 도구 모음이에요. 필요한 앱을 골라 바로 시작하세요. 모든 데이터는 이 브라우저에만 저장됩니다.</p>
+        </div>
+        <div class="card green">
+          <div class="muted small">사용 가능한 앱</div>
+          <div class="stat-num" id="readyCount">0</div>
+          <p class="muted small" id="plannedText" style="margin-bottom:0"></p>
+        </div>
+      </div>
+
+      <div class="toolbar" id="toolbar">
+        <input class="input search" id="search" placeholder="앱 검색" />
+      </div>
+
+      <div class="grid cols-3" id="appGrid"></div>
+    </section>
+  </main>
+
+  <footer class="container muted small">
+    새 앱 추가: <code>apps/</code> 폴더에 앱을 만들고 <code>apps.js</code>에 한 줄 덩어리를 추가하면 여기에 카드가 생겨요.
+  </footer>
+
+  <script src="apps.js"></script>
+  <script>
+    const apps = window.HUB_APPS || [];
+    const STATUS = {
+      ready:   { label: "사용 가능", cls: "green" },
+      beta:    { label: "베타", cls: "blue" },
+      planned: { label: "만들 예정", cls: "" },
+    };
+    let currentCat = "전체";
+
+    document.getElementById("today").textContent =
+      new Date().toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" });
+
+    const ready = apps.filter(a => a.status !== "planned").length;
+    document.getElementById("readyCount").textContent = ready;
+    document.getElementById("plannedText").textContent =
+      `만들 예정 ${apps.length - ready}개 · 전체 ${apps.length}개`;
+
+    // 분류 필터 버튼
+    const cats = ["전체", ...new Set(apps.map(a => a.category))];
+    const toolbar = document.getElementById("toolbar");
+    cats.reverse().forEach(c => {
+      const b = document.createElement("button");
+      b.className = "chip" + (c === currentCat ? " active" : "");
+      b.textContent = c;
+      b.onclick = () => {
+        currentCat = c;
+        toolbar.querySelectorAll(".chip").forEach(x => x.classList.toggle("active", x === b));
+        render();
+      };
+      toolbar.prepend(b);
+    });
+    document.getElementById("search").addEventListener("input", render);
+
+    function esc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+    function render() {
+      const q = document.getElementById("search").value.trim();
+      const list = apps.filter(a =>
+        (currentCat === "전체" || a.category === currentCat) &&
+        (!q || (a.name + a.desc).includes(q))
+      );
+      const grid = document.getElementById("appGrid");
+      if (!list.length) { grid.innerHTML = `<div class="card empty">조건에 맞는 앱이 없어요.</div>`; return; }
+      grid.innerHTML = list.map(a => {
+        const st = STATUS[a.status] || STATUS.ready;
+        const planned = a.status === "planned" || !a.path;
+        const tag = planned ? "div" : "a";
+        const href = planned ? "" : `href="${esc(a.path)}"`;
+        return `
+          <${tag} class="card app-card ${planned ? "planned" : ""}" ${href}>
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div class="app-icon ${esc(a.color || "green")}">${esc(a.icon)}</div>
+              <span class="badge ${st.cls}">${st.label}</span>
+            </div>
+            <div>
+              <h3>${esc(a.name)}</h3>
+              <div class="muted small">${esc(a.desc)}</div>
+            </div>
+            <div class="foot">
+              <span class="badge">${esc(a.category)}</span>
+              ${planned ? "" : `<span class="arrow">→</span>`}
+            </div>
+          </${tag}>`;
+      }).join("");
+    }
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>정보 담당 도우미</title>
+  <link rel="stylesheet" href="../../assets/style.css" />
+  <style>
+    .tabs { display: flex; gap: 6px; overflow-x: auto; padding: 16px 0; }
+    .tab { height: 38px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .tab.active { background: var(--green); color: #fff; border-color: var(--green); }
+    .page { display: none; padding-bottom: 48px; }
+    .page.active { display: block; }
+    .page-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+    .page-head h2 { margin: 0; }
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .filters .input { width: auto; min-width: 140px; }
+    .big { font-size: 34px; font-weight: 800; letter-spacing: -.03em; line-height: 1.1; }
+    .list-item { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .list-item:last-child { border-bottom: 0; }
+    .month-title { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .task { display: flex; gap: 10px; align-items: center; padding: 8px 4px; border-bottom: 1px dashed var(--line); }
+    .task:last-child { border-bottom: 0; }
+    .task input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--green); }
+    .task.done .t { text-decoration: line-through; color: var(--muted); }
+    .progress { height: 8px; background: rgba(255,255,255,.25); border-radius: 999px; overflow: hidden; margin-top: 12px; }
+    .progress > div { height: 100%; background: var(--neon); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    @media (max-width: 520px) { .form-grid { grid-template-columns: 1fr; } }
+    .row-actions { display: flex; gap: 4px; justify-content: flex-end; }
+    .overdue { color: var(--red); font-weight: 700; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="container">
+      <a class="btn sm" href="../../index.html">← 허브</a>
+      <span class="brand"><span class="brand-mark">💻</span> 정보 담당 도우미</span>
+      <div class="spacer"></div>
+      <span class="badge green" id="yearBadge"></span>
+    </div>
+  </header>
+
+  <main class="container">
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-page="dash">대시보드</button>
+      <button class="tab" data-page="devices">기기 대장</button>
+      <button class="tab" data-page="loans">대여·반납</button>
+      <button class="tab" data-page="tasks">연간 업무</button>
+      <button class="tab" data-page="sites">사이트 목록</button>
+      <button class="tab" data-page="settings">백업·설정</button>
+    </nav>
+
+    <!-- 대시보드 -->
+    <section class="page active" id="page-dash">
+      <div class="card" id="backupNotice" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;background:var(--amber-soft);border-color:transparent;margin-bottom:16px">
+        <div style="flex:1;min-width:200px"><b>💾 백업할 때가 됐어요.</b> <span class="small" id="backupNoticeText"></span>
+          <div class="small muted">데이터가 이 컴퓨터의 브라우저에만 저장돼서, 브라우저 기록을 지우거나 컴퓨터를 바꾸면 사라질 수 있어요.</div></div>
+        <button class="btn primary sm" onclick="document.getElementById('backupBtn').click()">지금 백업하기</button>
+      </div>
+      <div class="grid cols-4" id="dashStats"></div>
+      <div class="grid cols-2" style="margin-top:16px">
+        <div class="card">
+          <h2>이번 달 할 일</h2>
+          <div id="dashTasks"></div>
+        </div>
+        <div class="card">
+          <h2>반납 안 된 기기</h2>
+          <div id="dashLoans"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h2>점검이 필요한 기기</h2>
+        <div id="dashBroken"></div>
+      </div>
+    </section>
+
+    <!-- 기기 대장 -->
+    <section class="page" id="page-devices">
+      <div class="page-head">
+        <h2>기기 대장</h2>
+        <span class="badge" id="deviceCount"></span>
+        <div class="spacer"></div>
+        <button class="btn sm" id="exportDevices">CSV 내보내기</button>
+        <button class="btn primary sm" id="addDevice">+ 기기 추가</button>
+      </div>
+      <div class="filters">
+        <input class="input" id="devSearch" placeholder="이름·관리번호·위치 검색" />
+        <select class="input" id="devTypeFilter"></select>
+        <select class="input" id="devStatusFilter"></select>
+      </div>
+      <div class="card" style="padding:0"><div class="table-wrap"><table>
+        <thead><tr><th>관리번호</th><th>기기명</th><th>종류</th><th>위치</th><th>상태</th><th>메모</th><th></th></tr></thead>
+        <tbody id="deviceRows"></tbody>
+      </table></div></div>
+    </section>
+
+    <!-- 대여·반납 -->
+    <section class="page" id="page-loans">
+      <div class="page-head">
+        <h2>대여·반납 기록</h2>
+        <div class="spacer"></div>
+        <input class="input" id="loanSearch" placeholder="이름 검색" style="width:140px" />
+        <select class="input" id="loanClass" style="width:auto"></select>
+        <select class="input" id="loanFilter" style="width:auto">
+          <option value="active">대여 중</option>
+          <option value="all">전체 기록</option>
+        </select>
+        <button class="btn primary sm" id="addLoan">+ 대여 등록</button>
+      </div>
+      <div class="card" style="padding:0"><div class="table-wrap"><table>
+        <thead><tr><th>기기</th><th>학생 (학년-반-번호)</th><th>대여일</th><th>반납 예정</th><th>반납일</th><th></th></tr></thead>
+        <tbody id="loanRows"></tbody>
+      </table></div></div>
+    </section>
+
+    <!-- 연간 업무 -->
+    <section class="page" id="page-tasks">
+      <div class="grid cols-2" style="margin-bottom:16px">
+        <div class="card green">
+          <div class="muted small">올해 정보 업무 진행률</div>
+          <div class="big" id="taskPct">0%</div>
+          <div class="progress"><div id="taskBar" style="width:0"></div></div>
+        </div>
+        <div class="card">
+          <h3>업무 추가</h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <select class="input" id="newTaskMonth" style="width:110px"></select>
+            <input class="input" id="newTaskTitle" placeholder="예: 교직원 정보보안 교육" style="flex:1;min-width:160px" />
+            <button class="btn primary" id="addTask">추가</button>
+          </div>
+          <p class="muted small" style="margin:8px 0 0">처음 들어 있는 항목은 예시예요. 학교 상황에 맞게 지우거나 고쳐 쓰세요.</p>
+        </div>
+      </div>
+      <div class="grid cols-2" id="taskMonths"></div>
+    </section>
+
+    <!-- 사이트 목록 -->
+    <section class="page" id="page-sites">
+      <div class="page-head">
+        <h2>에듀테크·업무 사이트</h2>
+        <div class="spacer"></div>
+        <button class="btn primary sm" id="addSite">+ 사이트 추가</button>
+      </div>
+      <div class="card" style="background:var(--amber-soft);border-color:transparent;margin-bottom:12px">
+        <b>⚠ 비밀번호는 여기에 적지 마세요.</b>
+        <span class="small">이 앱은 브라우저에 암호화 없이 저장해요. 아이디·담당자·관리 방법 정도만 기록하세요.</span>
+      </div>
+      <div class="grid cols-3" id="siteCards"></div>
+    </section>
+
+    <!-- 백업·설정 -->
+    <section class="page" id="page-settings">
+      <div class="grid cols-2">
+        <div class="card">
+          <h2>백업하기</h2>
+          <p class="muted small">데이터는 이 컴퓨터의 이 브라우저에만 저장돼요. 브라우저 기록을 지우면 사라질 수 있으니 가끔 백업 파일을 받아 두세요.</p>
+          <button class="btn primary" id="backupBtn">백업 파일 받기 (.json)</button>
+          <p class="small muted" id="lastBackupText" style="margin:8px 0 0"></p>
+        </div>
+        <div class="card">
+          <h2>복원하기</h2>
+          <p class="muted small">백업 파일을 불러오면 현재 데이터가 백업 내용으로 바뀌어요.</p>
+          <input type="file" id="restoreFile" accept=".json,application/json" />
+        </div>
+        <div class="card">
+          <h2>학년도 설정</h2>
+          <p class="muted small">연간 업무 체크리스트의 기준 학년도예요. (3월 ~ 다음 해 2월)</p>
+          <div style="display:flex;gap:8px"><input class="input" id="schoolYear" type="number" style="width:120px" /><button class="btn" id="saveYear">저장</button></div>
+          <button class="btn sm" id="resetTasks" style="margin-top:10px">새 학년도 시작 (업무 체크 모두 해제)</button>
+        </div>
+        <div class="card">
+          <h2>전체 초기화</h2>
+          <p class="muted small">모든 기기·대여·업무·사이트 데이터를 지우고 처음 상태로 돌아가요. 되돌릴 수 없어요.</p>
+          <button class="btn danger" id="wipeBtn">전체 초기화</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 입력 모달 (모든 폼이 같이 씀) -->
+  <div class="modal-backdrop" id="modal">
+    <div class="card modal">
+      <h2 id="modalTitle"></h2>
+      <form id="modalForm">
+        <div class="form-grid" id="modalFields"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+          <button type="button" class="btn" id="modalCancel">취소</button>
+          <button type="submit" class="btn primary">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
