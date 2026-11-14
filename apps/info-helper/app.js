@@ -230,7 +230,7 @@ function renderLoans() {
   const mode = $("loanFilter").value, cls = $("loanClass").value, q = $("loanSearch").value.trim();
   // 반 선택 목록 갱신 (기록에 있는 반만)
   const classes = [...new Set(db.loans.map(studentKey).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko", { numeric: true }));
-  $("loanClass").innerHTML = `<option value="">모든 반</option>` + classes.map(c => `<option value="${c}" ${c === cls ? "selected" : ""}>${c.replace("-", "학년 ")}반</option>`).join("");
+  $("loanClass").innerHTML = `<option value="">모든 반</option>` + classes.map(c => `<option value="${esc(c)}" ${c === cls ? "selected" : ""}>${esc(c.replace("-", "학년 "))}반</option>`).join("");
   const list = db.loans.filter(l => (mode === "all" || !l.returnedDate) && (!cls || studentKey(l) === cls) &&
       (!q || (l.borrower + deviceLabel(l.deviceId)).includes(q)))
     .sort((a, b) => (b.outDate || "").localeCompare(a.outDate || "") || (a.borrower || "").localeCompare(b.borrower || "", "ko", { numeric: true }));

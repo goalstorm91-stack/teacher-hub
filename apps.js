@@ -23,6 +23,17 @@ window.HUB_APPS = [
     color: "green",
   },
 
+  {
+    id: "diary",
+    name: "일기장",
+    desc: "구글 계정으로 로그인해서 쓰는 나만의 일기장이에요. 달력·기분·태그·검색, 어느 컴퓨터에서든 이어서 쓸 수 있어요.",
+    icon: "📔",
+    path: "apps/diary/index.html",
+    category: "나의 기록",
+    status: "ready",
+    color: "navy",
+  },
+
   // ↓ 앞으로 만들 앱 예시 (필요 없으면 지우세요)
   {
     id: "seat-maker",

@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>일기장</title>
+  <link rel="stylesheet" href="../../assets/style.css" />
+  <style>
+    main { padding: 20px 0 56px; }
+    .layout { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 16px; align-items: start; }
+    @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } .layout > aside { order: 2; } }
+    .side { display: grid; gap: 16px; }
+
+    /* 달력 */
+    .cal-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .cal-head h2 { margin: 0; flex: 1; text-align: center; font-size: 17px; }
+    .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+    .cal .dow { font-size: 12px; font-weight: 700; color: var(--muted); padding: 4px 0; }
+    .cal .dow:first-child { color: var(--red); }
+    .day { aspect-ratio: 1; border-radius: 12px; border: 0; background: transparent; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; font-weight: 600; font-size: 13px; padding: 0; }
+    .day:hover { background: var(--surface-2); }
+    .day .m { font-size: 15px; line-height: 1.1; height: 17px; }
+    .day.has { background: var(--green-soft); }
+    .day.today { outline: 2px solid var(--green); outline-offset: -2px; }
+    .day.sel { background: var(--green); color: #fff; }
+    .day.future { color: #b8c2d0; }
+    .day.blank { visibility: hidden; }
+
+    .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+    .stat-row b { display: block; font-size: 26px; letter-spacing: -.03em; line-height: 1.2; }
+
+    /* 에디터 */
+    .editor-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .editor-head .date-input { width: auto; }
+    .title-input { font-size: 22px; font-weight: 800; height: 52px; border: 0; padding: 0; letter-spacing: -.02em; }
+    .title-input:focus { outline: none; }
+    textarea.body-input { min-height: 320px; border: 0; padding: 0; font-size: 16px; line-height: 1.8; resize: vertical; }
+    textarea.body-input:focus { outline: none; }
+    .divider { height: 1px; background: var(--line); margin: 6px 0 14px; }
+    .moods { display: flex; gap: 4px; flex-wrap: wrap; }
+    .mood { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); font-size: 19px; cursor: pointer; padding: 0; }
+    .mood.on { background: var(--green-soft); border-color: var(--green); }
+    .meta-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+    .meta-row .input { width: auto; }
+    .editor-foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+    .same-day { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+
+    /* 목록 */
+    .list-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+    .list-tools .input { max-width: 280px; border-radius: 999px; }
+    .entry { display: flex; gap: 14px; padding: 14px 4px; border-bottom: 1px solid var(--line); cursor: pointer; border-radius: 12px; }
+    .entry:hover { background: var(--surface-2); }
+    .entry:last-child { border-bottom: 0; }
+    .entry .d { min-width: 54px; text-align: center; }
+    .entry .d b { display: block; font-size: 22px; line-height: 1.1; }
+    .entry .x { color: var(--muted); font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .tagchip { cursor: pointer; }
+    .tagchip.on { background: var(--ink); color: #fff; }
+
+    /* 로그인·설정 안내 */
+    .gate { max-width: 560px; margin: 24px auto; }
+    #setup { max-width: 680px; }
+    .gate ol { padding-left: 20px; line-height: 1.9; }
+    .gate code, .card code { background: var(--surface-2); padding: 2px 6px; border-radius: 6px; }
+    .user { display: flex; align-items: center; gap: 8px; }
+    .user img { width: 30px; height: 30px; border-radius: 50%; background: var(--line); }
+    @media (max-width: 600px) { #userName { display: none; } }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="container">
+      <a class="btn sm" href="../../index.html">← 허브</a>
+      <span class="brand"><span class="brand-mark">📔</span> 일기장</span>
+      <div class="spacer"></div>
+      <div class="user" id="userBox" hidden>
+        <img id="userPhoto" alt="" referrerpolicy="no-referrer" />
+        <span class="small" id="userName"></span>
+        <button class="btn sm" id="logoutBtn">로그아웃</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- 불러오는 중 -->
+    <section id="loading" class="gate"><div class="card empty">일기장을 여는 중…</div></section>
+
+    <!-- Firebase 설정 전 -->
+    <section id="setup" class="gate" hidden>
+      <div class="card">
+        <div class="eyebrow">Setup</div>
+        <h1>Firebase 연결이 아직 안 됐어요</h1>
+        <p class="muted">일기장은 구글 로그인과 Firebase(구글의 데이터베이스)에 일기를 저장해요. 처음 한 번만 설정하면 돼요. 자세한 순서는 저장소의 <b>README → 일기장 설정하기</b>에 있어요.</p>
+        <ol>
+          <li>Firebase 콘솔에서 프로젝트를 만들고 <b>웹 앱</b>을 추가해요.</li>
+          <li><b>Authentication</b>에서 Google 로그인을 켜요.</li>
+          <li><b>Firestore Database</b>를 만들고, 저장소의 <code>firestore.rules</code> 내용을 규칙에 붙여 넣어요.</li>
+          <li>웹 앱 설정값을 <code>apps/diary/firebase-config.js</code>에 붙여 넣어요.</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- 로그인 전 -->
+    <section id="login" class="gate" hidden>
+      <div class="card" style="text-align:center;padding:40px 24px">
+        <div style="font-size:48px">📔</div>
+        <h1>나만 보는 일기장</h1>
+        <p class="muted">구글 계정으로 로그인하면 내 일기만 보여요.<br />다른 사람은 내 일기를 볼 수 없고, 어느 컴퓨터에서든 이어서 쓸 수 있어요.</p>
+        <button class="btn primary" id="loginBtn" style="height:48px;padding:0 24px;font-size:16px">G&nbsp; 구글 계정으로 로그인</button>
+        <p class="small" id="loginError" style="color:var(--red);margin-top:12px"></p>
+      </div>
+    </section>
+
+    <!-- 일기장 본문 -->
+    <section id="app" hidden>
+      <div class="layout">
+        <aside class="side">
+          <div class="card">
+            <div class="cal-head">
+              <button class="btn sm icon" id="prevMonth" aria-label="이전 달">‹</button>
+              <h2 id="monthTitle"></h2>
+              <button class="btn sm icon" id="nextMonth" aria-label="다음 달">›</button>
+            </div>
+            <div class="cal" id="cal"></div>
+            <div style="display:flex;justify-content:center;margin-top:10px">
+              <button class="btn sm" id="todayBtn">오늘로</button>
+            </div>
+          </div>
+
+          <div class="card green">
+            <div class="stat-row">
+              <div><b id="stStreak">0</b><span class="muted small">연속 기록</span></div>
+              <div><b id="stMonth">0</b><span class="muted small">이번 달</span></div>
+              <div><b id="stTotal">0</b><span class="muted small">전체</span></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>백업</h3>
+            <p class="muted small" style="margin-top:0">일기는 내 구글 계정에 연결된 Firebase에 저장돼요. 가끔 백업 파일을 받아 두면 더 안심이에요.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn sm" id="exportBtn">백업 받기</button>
+              <button class="btn sm" id="importBtn">백업 불러오기</button>
+              <input type="file" id="importFile" accept=".json,application/json" hidden />
+            </div>
+          </div>
+        </aside>
+
+        <div class="side">
+          <!-- 쓰기 -->
+          <div class="card">
+            <div class="editor-head">
+              <input type="date" class="input date-input" id="fDate" />
+              <span class="muted small" id="fDow"></span>
+              <div class="spacer"></div>
+              <span class="badge" id="saveState">새 일기</span>
+              <button class="btn sm" id="newBtn">+ 새 일기</button>
+            </div>
+            <div class="same-day" id="sameDay"></div>
+            <div class="meta-row">
+              <div class="moods" id="moods"></div>
+              <select class="input" id="fWeather" aria-label="날씨">
+                <option value="">날씨</option>
+                <option>☀️ 맑음</option><option>⛅ 구름</option><option>☁️ 흐림</option>
+                <option>🌧️ 비</option><option>❄️ 눈</option><option>🌬️ 바람</option>
+              </select>
+            </div>
+            <input class="input title-input" id="fTitle" placeholder="오늘의 제목" maxlength="100" />
+            <div class="divider"></div>
+            <textarea class="input body-input" id="fBody" placeholder="오늘 있었던 일, 수업에서 기억하고 싶은 순간, 내일의 나에게 하고 싶은 말…"></textarea>
+            <input class="input" id="fTags" placeholder="태그 (쉼표로 구분, 예: 수업, 상담, 감사)" style="margin-top:10px" />
+            <div class="editor-foot">
+              <button class="btn primary" id="saveBtn">저장하기</button>
+              <span class="muted small">Ctrl + S 로도 저장돼요</span>
+              <div class="spacer"></div>
+              <button class="btn sm danger" id="deleteBtn" hidden>삭제</button>
+            </div>
+          </div>
+
+          <!-- 목록 -->
+          <div class="card">
+            <div class="list-tools">
+              <h2 style="margin:0;flex:1">지난 일기</h2>
+              <input class="input" id="search" placeholder="제목·내용·태그 검색" />
+            </div>
+            <div class="list-tools" id="tagBar"></div>
+            <div id="list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
