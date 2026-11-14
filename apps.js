@@ -23,6 +23,17 @@ window.HUB_APPS = [
     color: "green",
   },
 
+  {
+    id: "diary",
+    name: "일기장",
+    desc: "하루를 기록하는 일기장이에요. 일기는 인터넷이 아닌 내 컴퓨터에만 저장돼요. (쓰기 전에 '일기장 시작.bat'을 켜 주세요)",
+    icon: "📔",
+    path: "apps/diary/index.html",
+    category: "나의 기록",
+    status: "ready",
+    color: "navy",
+  },
+
   // ↓ 앞으로 만들 앱 예시 (필요 없으면 지우세요)
   {
     id: "seat-maker",
